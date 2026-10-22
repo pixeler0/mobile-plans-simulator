@@ -4659,7 +4659,7 @@ export default function MobilePlanSimulator() {
                   onClick={resetConditions}
                   className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold cursor-pointer"
                 >
-                  条件をリセットする
+                  条件をリセットする 
                 </button>
               </div>
             )}
