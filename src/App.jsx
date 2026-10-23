@@ -29,7 +29,9 @@ import {
   Upload,
   Link2,
   Search,
-  Check
+  Check,
+  ArrowUpRight,
+  Home
 } from 'lucide-react';
 
 const ALL_CARRIER_KEYS = [
@@ -137,6 +139,8 @@ const PRESETS = [
       allowAppCall: true,
       monthlySpend: 50000,
       currentBill: 7500,
+      upgradeFrom: 'none',
+      sbOuchiSumahoWari: false,
       needs: {
         storeSupport: false,
         lineFree: false,
@@ -163,6 +167,8 @@ const PRESETS = [
       allowAppCall: false,
       monthlySpend: 80000,
       currentBill: 5500,
+      upgradeFrom: 'none',
+      sbOuchiSumahoWari: false,
       needs: {
         storeSupport: true,
         lineFree: false,
@@ -173,22 +179,24 @@ const PRESETS = [
     }
   },
   {
-    id: 'sb_middle',
-    label: 'SB光＋PayPay経済圏・月25GB',
-    desc: 'SNSや動画をしっかり使い店舗サポートも欲しい方',
+    id: 'sb_ouchi_sumaho',
+    label: 'SB光新規「おうちスマホ割」＋単身無制限',
+    desc: 'おうちスマホ割(-2,860円)＋光割＋PayPayゴールドで単身でも大幅割引',
     state: {
-      dataGB: 25,
+      dataGB: 100,
       ageGroup: 'adult',
       broadband: 'softbank',
-      denki: 'softbank',
+      denki: 'none',
       docomoYears: 'none',
-      familyCarrier: 'softbank',
-      familyCount: 3,
+      familyCarrier: 'none',
+      familyCount: 1,
       card: 'paypay_gold',
-      callType: 'short',
+      callType: 'none',
       allowAppCall: false,
-      monthlySpend: 60000,
-      currentBill: 6800,
+      monthlySpend: 50000,
+      currentBill: 8000,
+      upgradeFrom: 'none',
+      sbOuchiSumahoWari: true,
       needs: {
         storeSupport: true,
         lineFree: false,
@@ -199,22 +207,24 @@ const PRESETS = [
     }
   },
   {
-    id: 'senior_talk',
-    label: '65歳以上シニア・24時間かけ放題＆店舗重視',
-    desc: '通話をたくさん使い、ショップで相談したい方',
+    id: 'uq_to_au_upgrade',
+    label: 'UQ➔au番号移行（アップグレード割）',
+    desc: 'UQからauバリューリンクへ移行し1年間-2,640円割引を活用',
     state: {
-      dataGB: 4,
-      ageGroup: 'senior65',
+      dataGB: 50,
+      ageGroup: 'adult',
       broadband: 'au',
       denki: 'au',
       docomoYears: 'none',
       familyCarrier: 'au',
-      familyCount: 2,
+      familyCount: 3,
       card: 'aupay',
-      callType: 'unlimited',
+      callType: 'none',
       allowAppCall: false,
-      monthlySpend: 30000,
-      currentBill: 6000,
+      monthlySpend: 50000,
+      currentBill: 4000,
+      upgradeFrom: 'uq_to_au',
+      sbOuchiSumahoWari: false,
       needs: {
         storeSupport: true,
         lineFree: false,
@@ -241,6 +251,8 @@ const PRESETS = [
       allowAppCall: true,
       monthlySpend: 10000,
       currentBill: 4500,
+      upgradeFrom: 'none',
+      sbOuchiSumahoWari: false,
       needs: {
         storeSupport: false,
         lineFree: true,
@@ -287,6 +299,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '最大3カ月間',
     limitedAgeCondition: 'senior60',
     limitedNote: '60歳以上は最大3カ月間 -2,970円割引',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 880,
     callUnlimitedFee: 1980,
     callSeniorUnlimitedFee: 1980,
@@ -301,6 +318,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: 'DAZN見放題（月額4,200円相当）が追加料金なしで標準付帯|海外ローミングが30GBまで追加料金なし|長期利用割（最大-220円）＆ドコモでんき割（-110円）対応',
     warningText: ''
   },
@@ -337,6 +357,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '最大3カ月間',
     limitedAgeCondition: 'senior60',
     limitedNote: '60歳以上は最大3カ月間 -2,970円割引',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 880,
     callUnlimitedFee: 1980,
     callSeniorUnlimitedFee: 1980,
@@ -351,6 +376,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: 'DAZN見放題（月額4,200円相当）が追加料金なしで標準付帯|海外ローミングが30GBまで追加料金なし|長期利用割（最大-220円）＆ドコモでんき割（-110円）対応',
     warningText: ''
   },
@@ -387,6 +415,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '最大7カ月間',
     limitedAgeCondition: 'u22',
     limitedNote: '22歳以下対象！毎月27GB進呈＆-2,728円割引（光・家族3人・dカードGOLD併用で7カ月間0円）',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 880,
     callUnlimitedFee: 1980,
     callSeniorUnlimitedFee: 1980,
@@ -401,6 +434,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: '22歳以下なら最大7カ月間「毎月27GBボーナス進呈」で28GBまで基本5,698円段階のまま利用可能！|ドコモU22割(-2,728円)＋ドコモ光(-1,210円)＋家族3回線(-1,210円)＋dカードGOLD(-550円)で最大7カ月間は月額0円！|DAZN見放題＆海外ローミング30GB無料も標準付帯',
     warningText: '8カ月目以降は27GBボーナスとU22割が終了し、4GB以上使う場合は無制限段階（基本8,448円）に移行します（U22割適用中はでんき割・長期割は対象外となり8カ月目から適用）'
   },
@@ -437,6 +473,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '最大7カ月間',
     limitedAgeCondition: 'u22',
     limitedNote: '22歳以下対象！毎月27GB進呈＆-3,828円割引（光・家族3人・dカードGOLD併用で7カ月間0円）',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 880,
     callUnlimitedFee: 1980,
     callSeniorUnlimitedFee: 1980,
@@ -451,6 +492,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: '22歳以下なら最大7カ月間「毎月27GBボーナス進呈」＋「-3,828円割引」で30GBまで実質2,970円（セット割なし時）！|ドコモ光＋家族3回線＋dカードGOLD併用なら30GBまで最大7カ月間は月額0円！|DAZN見放題＆海外ローミング30GB無料も標準付帯',
     warningText: '8カ月目以降は27GBボーナスとU22割が終了し、4GB以上使う場合は無制限段階（基本8,448円）に移行します（U22割適用中はでんき割・長期割は対象外となり8カ月目から適用）'
   },
@@ -487,6 +531,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '最大7カ月間',
     limitedAgeCondition: 'u22',
     limitedNote: '22歳以下は30GB超（無制限）利用時も最大7カ月間-550円割引（フル割引時4,928円）',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 880,
     callUnlimitedFee: 1980,
     callSeniorUnlimitedFee: 1980,
@@ -501,6 +550,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: 'DAZN見放題（月額4,200円相当）が標準付帯|海外ローミング30GBまで無料|22歳以下は「ドコモU22割」で無制限時も7カ月間-550円（通常時は光・家族・カード・でんき・長期割で5,148円）',
     warningText: ''
   },
@@ -537,6 +589,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '',
     limitedAgeCondition: 'all',
     limitedNote: '',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 880,
     callUnlimitedFee: 1980,
     callSeniorUnlimitedFee: 1980,
@@ -551,6 +608,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 5,
     poikatsuRateGold: 10,
     poikatsuCap: 5000,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: 'dカード決済で毎月最大5,000ptのポイント還元|DAZN見放題＆海外30GB無料が標準付帯|長期利用割（最大-220円）＆ドコモでんき割（-110円）対応',
     warningText: 'dカード以外の決済ではポイント還元メリットが小さくなります'
   },
@@ -587,6 +647,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '',
     limitedAgeCondition: 'all',
     limitedNote: '',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 880,
     callUnlimitedFee: 1980,
     callSeniorUnlimitedFee: 1980,
@@ -640,6 +705,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '',
     limitedAgeCondition: 'all',
     limitedNote: '',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 880,
     callUnlimitedFee: 1980,
     callSeniorUnlimitedFee: 1980,
@@ -693,6 +763,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '',
     limitedAgeCondition: 'all',
     limitedNote: '',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 0,
     callUnlimitedFee: 1100,
     callSeniorUnlimitedFee: 1100,
@@ -746,6 +821,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '',
     limitedAgeCondition: 'all',
     limitedNote: '',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 0,
     callUnlimitedFee: 1100,
     callSeniorUnlimitedFee: 1100,
@@ -760,6 +840,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: '110GBの大容量をセット割なしで4,950円|1回5分以内の国内通話無料が標準付帯',
     warningText: ''
   },
@@ -796,6 +879,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '最大12カ月間',
     limitedAgeCondition: 'u15',
     limitedNote: '5〜15歳のお子様および家族の条件適用で',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 880,
     callUnlimitedFee: 1980,
     callSeniorUnlimitedFee: 1980,
@@ -810,6 +898,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: '5〜15歳限定！最大20GB対応の2段階制スマホデビュープラン|親子割で1年目は大幅割引',
     warningText: ''
   },
@@ -846,6 +937,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '最大12カ月間',
     limitedAgeCondition: 'u15',
     limitedNote: '5〜15歳のお子様および家族の条件適用で',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 880,
     callUnlimitedFee: 1980,
     callSeniorUnlimitedFee: 1980,
@@ -860,6 +956,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: '5〜15歳限定！最大20GB対応の2段階制スマホデビュープラン|親子割で1年目は大幅割引',
     warningText: ''
   },
@@ -896,6 +995,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '',
     limitedAgeCondition: 'all',
     limitedNote: '',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 880,
     callUnlimitedFee: 1980,
     callSeniorUnlimitedFee: 880,
@@ -910,8 +1014,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: '月1GB以下の月は自動で1,650円割引（割引後3,828円）|Pontaパス（月額548円相当）・au Starlink Direct・au海外放題が標準セット|auスマートバリュー＋家族割プラス＋カード割で最大2,530円割引',
-    warningText: ''
+    warningText: '月1GB以下の自動割引適用月は「UQ mobile→au移行プログラム（-2,640円）」の割引対象外となります'
   },
   {
     id: 'au_valuelink_unlim',
@@ -946,6 +1053,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '最大1年間（12カ月）',
     limitedAgeCondition: 'u18',
     limitedNote: '18歳以下および家族の条件適用時',
+    upgradeTarget: 'uq_to_au',
+    upgradeDiscount: 2640,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 880,
     callUnlimitedFee: 1980,
     callSeniorUnlimitedFee: 880,
@@ -960,7 +1072,10 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
-    reasonsText: 'Pontaパス（月額548円相当）・au Starlink Direct・au海外放題（月15日分）が標準セット|スマートバリュー＋家族割プラス＋カード割で毎月最大2,530円割引（割引後5,478円）',
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
+    reasonsText: 'Pontaパス（月額548円相当）・au Starlink Direct・au海外放題（月15日分）が標準セット|スマートバリュー＋家族割プラス＋カード割で毎月最大2,530円割引（割引後5,478円）|UQ mobileからの番号移行なら「UQ mobile→au移行プログラム」で1年間さらに-2,640円割引（月額2,838円〜）！',
     warningText: ''
   },
   {
@@ -996,6 +1111,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '',
     limitedAgeCondition: 'all',
     limitedNote: '',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 0,
     callUnlimitedFee: 1100,
     callSeniorUnlimitedFee: 1100,
@@ -1010,6 +1130,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: '5〜12歳限定！家族割プラス(-1,100円)＋au PAYカード割(-220円)で月額550円|1回5分以内の国内通話無料が標準付帯＆送受信最大300kbpsで使いすぎ防止',
     warningText: '通信速度が最大300kbpsに制限されるため動画視聴等には不向きです'
   },
@@ -1046,6 +1169,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '',
     limitedAgeCondition: 'all',
     limitedNote: '',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 880,
     callUnlimitedFee: 1980,
     callSeniorUnlimitedFee: 1980,
@@ -1060,6 +1188,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: '1年限りではなく22歳になるまでずっと学割料金が継続！',
     warningText: ''
   },
@@ -1096,6 +1227,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '最大1年間（12カ月）',
     limitedAgeCondition: 'u18',
     limitedNote: '5〜18歳および家族の条件適用で1年間さらに割引',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 880,
     callUnlimitedFee: 1980,
     callSeniorUnlimitedFee: 1980,
@@ -1110,6 +1246,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: '1年限りではなく22歳になるまでずっと学割料金が継続！|スマートバリュー＋家族割3人＋カード割で通常時も2,728円',
     warningText: ''
   },
@@ -1146,6 +1285,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '',
     limitedAgeCondition: 'all',
     limitedNote: '',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 0,
     callUnlimitedFee: 880,
     callSeniorUnlimitedFee: 880,
@@ -1160,6 +1304,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: '60歳以上限定！5分かけ放題・迷惑電話対策・留守電EXが標準セット|全国のauショップで対面サポート対応',
     warningText: ''
   },
@@ -1196,6 +1343,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '',
     limitedAgeCondition: 'all',
     limitedNote: '',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 880,
     callUnlimitedFee: 1980,
     callSeniorUnlimitedFee: 880,
@@ -1249,6 +1401,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '最大1年間（12カ月）',
     limitedAgeCondition: 'u18',
     limitedNote: '18歳以下およびその家族なら誰でも適用',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 880,
     callUnlimitedFee: 1980,
     callSeniorUnlimitedFee: 880,
@@ -1302,6 +1459,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '最大13カ月間',
     limitedAgeCondition: 'all',
     limitedNote: '光回線不要！プラン加入で誰でも適用',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 0,
     callUnlimitedFee: 1100,
     callSeniorUnlimitedFee: 880,
@@ -1320,7 +1482,7 @@ const INITIAL_SPREADSHEET_ROWS = [
     zouryoFee: 550,
     zouryoFreeMonths: 7,
     reasonsText: '光回線セット割なしで誰でも定額（「コミコミおトク割」で最大13カ月間は月額3,168円！）|増量オプションⅡ（7カ月無料）で最大40GBまで対応',
-    warningText: ''
+    warningText: 'コミコミプラン系は自宅セット割の対象外です'
   },
   {
     id: 'povo2_3gb',
@@ -1355,6 +1517,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '',
     limitedAgeCondition: 'all',
     limitedNote: '',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 550,
     callUnlimitedFee: 1650,
     callSeniorUnlimitedFee: 1650,
@@ -1369,6 +1536,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: '基本料0円で固定回線や家族割がなくても単身で最安クラスのトッピング制|5分かけ放題トッピングも月額550円と割安',
     warningText: '180日間有料トッピング購入がない場合は利用停止となります'
   },
@@ -1405,6 +1575,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '',
     limitedAgeCondition: 'all',
     limitedNote: '',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 550,
     callUnlimitedFee: 1650,
     callSeniorUnlimitedFee: 1650,
@@ -1419,6 +1594,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: '基本料0円で固定回線や家族割がなくても単身で最安クラスのトッピング制',
     warningText: '180日間有料トッピング購入がない場合は利用停止となります'
   },
@@ -1455,6 +1633,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '',
     limitedAgeCondition: 'all',
     limitedNote: '',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 550,
     callUnlimitedFee: 1650,
     callSeniorUnlimitedFee: 1650,
@@ -1469,6 +1652,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: '基本料0円で固定回線や家族割がなくても単身で最安クラスのトッピング制',
     warningText: '180日間有料トッピング購入がない場合は利用停止となります'
   },
@@ -1505,6 +1691,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '',
     limitedAgeCondition: 'all',
     limitedNote: '',
+    upgradeTarget: 'ym_to_sb',
+    upgradeDiscount: 2420,
+    linemoUpgradeDiscount: 2288,
+    ouchiSumaho1stYear: 2860,
+    ouchiSumaho2ndYearGold: 1210,
     callShortFee: 880,
     callUnlimitedFee: 1980,
     callSeniorUnlimitedFee: 1980,
@@ -1519,8 +1710,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
-    reasonsText: '毎月200ptのPayPayポイント付与＋海外データ放題対応|おうち割 光セット＋家族割＋カード割＋おうち割 でんきセット（-110円）対応',
-    warningText: ''
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
+    reasonsText: '毎月200ptのPayPayポイント付与＋海外データ放題対応|新設「おうちスマホ割」なら家族割なしでも1年間-2,860円（PayPayカードゴールドなら2年目以降も-1,210円継続）！|ワイモバイルからの番号移行なら「のりかえ特典＋」で1年間-2,420円割引',
+    warningText: '「おうちスマホ割」は新みんな家族割およびワイモバイル/LINEMOのりかえ特典とは併用不可（排他）です'
   },
   {
     id: 'sb_peitoku2',
@@ -1555,6 +1749,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '',
     limitedAgeCondition: 'all',
     limitedNote: '',
+    upgradeTarget: 'ym_to_sb',
+    upgradeDiscount: 2420,
+    linemoUpgradeDiscount: 2288,
+    ouchiSumaho1stYear: 2860,
+    ouchiSumaho2ndYearGold: 1210,
     callShortFee: 880,
     callUnlimitedFee: 1980,
     callSeniorUnlimitedFee: 1980,
@@ -1569,8 +1768,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 5,
     poikatsuRateGold: 8,
     poikatsuCap: 4000,
-    reasonsText: 'PayPay決済で毎月最大4,000ptのポイント還元|おうち割 でんきセット（-110円）併用可',
-    warningText: ''
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
+    reasonsText: 'PayPay決済で毎月最大4,000ptのポイント還元|「おうちスマホ割」適用なら1年間-2,860円（上限還元時 実質2,028円/月〜）！|ワイモバイルからの番号移行なら「のりかえ特典＋」で1年間-2,420円割引',
+    warningText: '「おうちスマホ割」は新みんな家族割およびワイモバイル/LINEMOのりかえ特典とは併用不可（排他）です'
   },
   {
     id: 'sb_debut_light_4gb',
@@ -1605,6 +1807,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '1年間（12カ月間）',
     limitedAgeCondition: 'all',
     limitedNote: '5〜22歳の新規またはガラケーからののりかえで1年間割引',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 880,
     callUnlimitedFee: 1980,
     callSeniorUnlimitedFee: 880,
@@ -1619,6 +1826,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: '5〜22歳のスマホデビュー（またはガラケーからの乗換）で1年間は月額1,078円（PayPayカード割適用時）|全国のソフトバンクショップで対面サポート対応',
     warningText: '光セット割や新みんな家族割の割引額は対象外（家族回線数のカウント対象には含まれます）'
   },
@@ -1655,6 +1865,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '最大6カ月間（7〜12カ月目は-1,188円）',
     limitedAgeCondition: 'u18',
     limitedNote: '1年おトク割＋(-1,188円×12カ月)＋5〜18歳デビュー特典(-1,650円×6カ月)',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 880,
     callUnlimitedFee: 1980,
     callSeniorUnlimitedFee: 880,
@@ -1669,6 +1884,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: '5〜18歳のデビュー特典適用で最初の6カ月間は20GBが月額1,078円！（7〜12カ月目は2,728円、2年目以降3,916円）|親がソフトバンクなら「デビュー特典（セット割）」で親の料金も1年間-1,078円',
     warningText: ''
   },
@@ -1705,6 +1923,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '',
     limitedAgeCondition: 'all',
     limitedNote: '',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 880,
     callUnlimitedFee: 1980,
     callSeniorUnlimitedFee: 880,
@@ -1758,6 +1981,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '1年間（12カ月間）',
     limitedAgeCondition: 'all',
     limitedNote: 'シンプル3 M/L加入で誰でも適用（光・家族・でんき割と排他）',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 880,
     callUnlimitedFee: 1980,
     callSeniorUnlimitedFee: 880,
@@ -1811,6 +2039,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '1年間（12カ月間）',
     limitedAgeCondition: 'all',
     limitedNote: 'シンプル3 M/L加入で誰でも適用（光・家族・でんき割と排他）',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 0,
     callUnlimitedFee: 1100,
     callSeniorUnlimitedFee: 0,
@@ -1864,6 +2097,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '',
     limitedAgeCondition: 'all',
     limitedNote: '',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 550,
     callUnlimitedFee: 1650,
     callSeniorUnlimitedFee: 1650,
@@ -1878,6 +2116,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: 'LINEのトーク・音声通話・ビデオ通話のギガ消費がゼロ（LINEギガフリー）|ソフトバンク品質をセット割なしで月額990円',
     warningText: ''
   },
@@ -1914,6 +2155,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '',
     limitedAgeCondition: 'all',
     limitedNote: '',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 550,
     callUnlimitedFee: 1650,
     callSeniorUnlimitedFee: 1650,
@@ -1928,6 +2174,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: 'LINEのトーク・通話のギガ消費がゼロ（LINEギガフリー）|ソフトバンク品質をセット割なしで格安利用',
     warningText: ''
   },
@@ -1964,6 +2213,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '',
     limitedAgeCondition: 'all',
     limitedNote: '',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 0,
     callUnlimitedFee: 1100,
     callSeniorUnlimitedFee: 1100,
@@ -1978,6 +2232,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: '30GB＋5分通話無料＋LINEギガフリーがセット割なしで月額2,970円',
     warningText: ''
   },
@@ -2014,6 +2271,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '',
     limitedAgeCondition: 'all',
     limitedNote: '',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 1100,
     callUnlimitedFee: 1100,
     callSeniorUnlimitedFee: 1100,
@@ -2028,6 +2290,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: '光回線セット割なしで誰でも〜3GB 1,078円|Rakuten Linkアプリで国内通話24時間無料|全国ショップ対応',
     warningText: ''
   },
@@ -2064,6 +2329,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '',
     limitedAgeCondition: 'all',
     limitedNote: '',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 1100,
     callUnlimitedFee: 1100,
     callSeniorUnlimitedFee: 1100,
@@ -2078,6 +2348,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: '光回線セット割なしで20GBまで2,178円|Rakuten Linkアプリで国内通話24時間無料|全国ショップ対応',
     warningText: ''
   },
@@ -2114,6 +2387,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '',
     limitedAgeCondition: 'all',
     limitedNote: '',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 1100,
     callUnlimitedFee: 1100,
     callSeniorUnlimitedFee: 1100,
@@ -2128,6 +2406,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: '光回線セット割なしでデータ無制限3,278円！|Rakuten Linkアプリで国内通話24時間無料|全国ショップ対応',
     warningText: ''
   },
@@ -2164,6 +2445,11 @@ const INITIAL_SPREADSHEET_ROWS = [
     limitedPeriod: '',
     limitedAgeCondition: 'all',
     limitedNote: '',
+    upgradeTarget: 'none',
+    upgradeDiscount: 0,
+    linemoUpgradeDiscount: 0,
+    ouchiSumaho1stYear: 0,
+    ouchiSumaho2ndYearGold: 0,
     callShortFee: 1100,
     callUnlimitedFee: 1100,
     callSeniorUnlimitedFee: 1100,
@@ -2178,6 +2464,9 @@ const INITIAL_SPREADSHEET_ROWS = [
     poikatsuRateNormal: 0,
     poikatsuRateGold: 0,
     poikatsuCap: 0,
+    zouryoAddGB: 0,
+    zouryoFee: 0,
+    zouryoFreeMonths: 0,
     reasonsText: 'ギガ無制限とU-NEXT（月額2,189円相当）がセットで4,378円（実質2,189円相当で無制限通信）',
     warningText: ''
   }
@@ -2217,7 +2506,9 @@ function evaluatePlansFromSpreadsheet(rows, inputs) {
     allowAppCall,
     monthlySpend,
     needs,
-    zouryoMode = 'auto'
+    zouryoMode = 'auto',
+    upgradeFrom = 'none',
+    sbOuchiSumahoWari = false
   } = inputs;
 
   const isU12 = ageGroup === 'u12';
@@ -2242,6 +2533,7 @@ function evaluatePlansFromSpreadsheet(rows, inputs) {
   const evaluated = activeRows.map((row) => {
     const basePrice = Number(row.basePrice) || 0;
     const discounts = [];
+    const limitedDiscounts = [];
 
     // 増量オプションの適用判定
     const maxD = Number(row.maxData) || 0;
@@ -2272,12 +2564,58 @@ function evaluatePlansFromSpreadsheet(rows, inputs) {
       row.denkiTarget && row.denkiTarget !== 'none' && denki === row.denkiTarget;
     const denkiDiscAmount = hasDenkiMatch ? Number(row.denkiDiscount) || 0 : 0;
 
+    // ★ ソフトバンク「おうちスマホ割」の適用判定（新みんな家族割・YM/LINEMO番号移行特典と排他）
+    const ouchi1stVal = Number(row.ouchiSumaho1stYear) || 0;
+    const ouchi2ndGoldVal = Number(row.ouchiSumaho2ndYearGold) || 0;
+    const canApplyOuchiSumaho =
+      sbOuchiSumahoWari &&
+      row.carrierKey === 'softbank' &&
+      hasBBMatch &&
+      ouchi1stVal > 0;
+
+    // 番号移行（アップグレード）特典の候補額を計算
+    let candidateUpgradeLimited = 0;
+    let candidateUpgradeName = '';
+    if (
+      upgradeFrom === 'uq_to_au' &&
+      row.upgradeTarget === 'uq_to_au' &&
+      Number(row.upgradeDiscount) > 0
+    ) {
+      candidateUpgradeLimited = Number(row.upgradeDiscount);
+      candidateUpgradeName = 'UQ mobile→au移行プログラム';
+    } else if (
+      upgradeFrom === 'ym_to_sb' &&
+      row.upgradeTarget === 'ym_to_sb' &&
+      Number(row.upgradeDiscount) > 0
+    ) {
+      candidateUpgradeLimited = Number(row.upgradeDiscount);
+      candidateUpgradeName = 'ワイモバイル→ソフトバンクのりかえ特典＋';
+    } else if (
+      upgradeFrom === 'linemo_to_sb' &&
+      row.upgradeTarget === 'ym_to_sb' &&
+      Number(row.linemoUpgradeDiscount) > 0
+    ) {
+      candidateUpgradeLimited = Number(row.linemoUpgradeDiscount);
+      candidateUpgradeName = 'LINEMO→ソフトバンクのりかえ特典';
+    }
+
+    // ソフトバンクでおうちスマホ割と「家族割＋番号移行特典」が競合する場合、1年目の合計割引が大きい方を優先適用
+    const ouchiTotal1stYearBenefit = ouchi1stVal;
+    const famPlusUpgradeBenefit = famDiscAmount + candidateUpgradeLimited;
+    const isOuchiSumahoActive =
+      canApplyOuchiSumaho && ouchiTotal1stYearBenefit >= famPlusUpgradeBenefit;
+
+    if (isOuchiSumahoActive) {
+      // おうちスマホ割適用時は「新みんな家族割」と「のりかえ特典＋」が排他（対象外）
+      famDiscAmount = 0;
+      candidateUpgradeLimited = 0;
+    }
+
     // 排他制御（UQ自宅セット割やY!mobileおうち割のように光・でんき・家族割が重複しないケース）
     if (row.bbFamExclusive) {
       if (row.denkiExclusive) {
         if (bbDiscAmount >= denkiDiscAmount && bbDiscAmount >= famDiscAmount && bbDiscAmount > 0) {
           discounts.push({ name: '自宅・光セット割', amount: bbDiscAmount });
-          // Y!mobileで光セット割(-1,650円)適用時におうちでんきもある場合はおうち割でんきセット(A)(-110円)を加算
           if (row.carrierKey === 'ymobile' && hasDenkiMatch) {
             discounts.push({ name: 'おうち割 でんきセット(A)', amount: 110 });
           }
@@ -2326,6 +2664,7 @@ function evaluatePlansFromSpreadsheet(rows, inputs) {
     }
 
     // クレジットカード割の判定
+    const isPayPayGold = card === 'paypay_gold';
     if (row.cardTarget && row.cardTarget !== 'none') {
       const isGold =
         card === `${row.cardTarget}_gold` ||
@@ -2342,6 +2681,42 @@ function evaluatePlansFromSpreadsheet(rows, inputs) {
           amount: Number(row.cardDiscountNormal)
         });
       }
+    }
+
+    // ★ おうちスマホ割の反映（2年目以降ゴールド継続分＋1年目期間限定上乗せ分）
+    if (isOuchiSumahoActive) {
+      if (isPayPayGold && ouchi2ndGoldVal > 0) {
+        discounts.push({
+          name: 'おうちスマホ割(2年目以降も継続・Gold特典)',
+          amount: ouchi2ndGoldVal
+        });
+        const firstYearExtra = Math.max(0, ouchi1stVal - ouchi2ndGoldVal);
+        if (firstYearExtra > 0) {
+          limitedDiscounts.push({
+            name: 'おうちスマホ割(1年目増額分・計-2,860円)',
+            amount: firstYearExtra,
+            period: '1年間（翌月〜13カ月目）',
+            condition: 'SoftBank光/Air新規加入（家族割・のりかえ特典と排他）'
+          });
+        }
+      } else {
+        limitedDiscounts.push({
+          name: 'おうちスマホ割',
+          amount: ouchi1stVal,
+          period: '1年間（翌月〜13カ月目）',
+          condition: 'SoftBank光/Air新規加入（PayPayカードゴールドなら2年目以降も-1,210円継続）'
+        });
+      }
+    }
+
+    // ★ サブブランドからの番号移行（アップグレード）割引の反映
+    if (candidateUpgradeLimited > 0) {
+      limitedDiscounts.push({
+        name: candidateUpgradeName,
+        amount: candidateUpgradeLimited,
+        period: '1年間（12カ月間）',
+        condition: 'サブブランドからの番号移行（アップグレード）特典'
+      });
     }
 
     // ドコモ長期利用割の判定
@@ -2372,8 +2747,7 @@ function evaluatePlansFromSpreadsheet(rows, inputs) {
       });
     }
 
-    // 期間限定割引の判定（Y!mobile 超！おトク割は光・家族・でんき割(E)適用時は重複しないよう制御）
-    const limitedDiscounts = [];
+    // 通常の期間限定割引の判定（Y!mobile 超！おトク割は光・家族・でんき割(E)適用時は重複しないよう制御）
     const hasYmobileExclusiveBaseDisc =
       row.carrierKey === 'ymobile' &&
       (bbDiscAmount > 0 || famDiscAmount > 0 || (row.denkiExclusive && denkiDiscAmount > 0));
@@ -2392,7 +2766,7 @@ function evaluatePlansFromSpreadsheet(rows, inputs) {
       });
     }
 
-    // 通話料の計算
+    // 通話料の計算（LINEMO→SBのりかえ特典適用時は通話OP 880円×12カ月割引も考慮）
     let callFee = 0;
     let callNote = row.callDefaultNote || '従量制 (22円/30秒)';
     if (row.useRakutenLink && allowAppCall) {
@@ -2412,6 +2786,20 @@ function evaluatePlansFromSpreadsheet(rows, inputs) {
         isSenior60 && callFee < Number(row.callUnlimitedFee)
           ? `60歳以上通話割で24時間かけ放題 (+${callFee.toLocaleString()}円)`
           : `24時間かけ放題OP (+${callFee.toLocaleString()}円)`;
+    }
+
+    if (
+      upgradeFrom === 'linemo_to_sb' &&
+      row.upgradeTarget === 'ym_to_sb' &&
+      !isOuchiSumahoActive &&
+      callFee >= 880
+    ) {
+      limitedDiscounts.push({
+        name: 'LINEMOのりかえ通話OP割引',
+        amount: 880,
+        period: '1年間（12カ月間）',
+        condition: 'LINEMO→SBのりかえ特典（通話オプション割引）'
+      });
     }
 
     // 特典・ポイント還元額の計算
@@ -2493,7 +2881,19 @@ function evaluatePlansFromSpreadsheet(rows, inputs) {
       );
     }
 
-    // ドコモU22割適用時の特殊処理（1〜7カ月目はでんき割・長期割が排他、8カ月目以降はボーナス27GB終了に伴い4GB以上は無制限段階8,448円へ移行）
+    if (isOuchiSumahoActive) {
+      reasons.unshift(
+        `新設「おうちスマホ割」適用！1年目は毎月-2,860円割引${
+          isPayPayGold ? '、2年目以降もPayPayカードゴールド特典で毎月-1,210円割引がずっと継続' : ''
+        }！`
+      );
+    } else if (candidateUpgradeLimited > 0) {
+      reasons.unshift(
+        `${candidateUpgradeName}適用！移行翌月から1年間（12カ月間）毎月-${candidateUpgradeLimited.toLocaleString()}円割引！`
+      );
+    }
+
+    // ドコモU22割適用時の特殊処理
     const isDocomoU22Applied =
       limitedDiscounts.some((ld) => ld.name.includes('ドコモU22割'));
     const u22ExcludedDiscount = isDocomoU22Applied
@@ -2624,6 +3024,17 @@ const SPREADSHEET_COLUMNS = [
   { key: 'denkiExclusive', label: 'でんき排他', type: 'boolean', width: 'w-24' },
   { key: 'longTerm10Discount', label: '長期割(10年+)', type: 'number', width: 'w-28' },
   { key: 'longTerm20Discount', label: '長期割(20年+)', type: 'number', width: 'w-28' },
+  {
+    key: 'upgradeTarget',
+    label: '番号移行対象',
+    type: 'select',
+    options: ['none', 'uq_to_au', 'ym_to_sb'],
+    width: 'w-28'
+  },
+  { key: 'upgradeDiscount', label: 'UQ/YM移行割(1年)', type: 'number', width: 'w-32' },
+  { key: 'linemoUpgradeDiscount', label: 'LINEMO移行割(1年)', type: 'number', width: 'w-32' },
+  { key: 'ouchiSumaho1stYear', label: 'SBおうちスマホ割(1年目)', type: 'number', width: 'w-36' },
+  { key: 'ouchiSumaho2ndYearGold', label: 'SBおうちスマホ割(2年目Gold)', type: 'number', width: 'w-36' },
   { key: 'limitedName', label: '期間限定割名称', type: 'text', width: 'w-48' },
   { key: 'limitedAmount', label: '期間割額(円)', type: 'number', width: 'w-24' },
   { key: 'limitedPeriod', label: '期間割期間', type: 'text', width: 'w-32' },
@@ -2713,6 +3124,11 @@ function parseCSVOrTSV(text, fallbackRows) {
       warningText: '',
       youthDiscountU12: 0,
       youthDiscountU22: 0,
+      upgradeTarget: 'none',
+      upgradeDiscount: 0,
+      linemoUpgradeDiscount: 0,
+      ouchiSumaho1stYear: 0,
+      ouchiSumaho2ndYearGold: 0,
       fixedBonusPoint: 0,
       poikatsuRateNormal: 0,
       poikatsuRateGold: 0,
@@ -2797,19 +3213,19 @@ function createPlanEntry({
 
   // ① 1〜7カ月目（期間限定割あり ＋ 増量オプション無料期間中 ※ドコモU22割適用中はでんき割・長期割を除外）
   const activeFirst7Discounts = Math.max(0, totalDiscount - u22ExcludedDiscount);
-  const firstYearPlanPrice = Math.max(
+  const firstYearTotalCost = Math.max(
     0,
-    basePrice - activeFirst7Discounts - totalLimitedDiscount
+    basePrice + callFee - activeFirst7Discounts - totalLimitedDiscount
   );
-  const first7MonthsPayment = firstYearPlanPrice + callFee;
+  const first7MonthsPayment = firstYearTotalCost;
   const first7MonthsEffective = Math.max(0, first7MonthsPayment - perkValue);
 
   // ② 8〜12カ月目（7カ月間の期間限定割は終了し通常料金へ移行、12カ月割は継続 ＋ 増量オプション有料化後）
-  const months8To12PlanPrice = is7MonthLimited
-    ? planAfterDiscount
-    : firstYearPlanPrice;
+  const months8To12BaseAndCall = is7MonthLimited
+    ? planAfterDiscount + callFee
+    : firstYearTotalCost;
   const months8To12Payment =
-    months8To12PlanPrice + callFee + (zouryoApplied ? zouryoFee : 0);
+    months8To12BaseAndCall + (zouryoApplied ? zouryoFee : 0);
   const months8To12Effective = Math.max(0, months8To12Payment - perkValue);
 
   return {
@@ -2880,6 +3296,10 @@ export default function MobilePlanSimulator() {
     dazn: false,
     unext: false
   });
+
+  // ★ 新規追加状態：サブブランドからの番号移行（アップグレード）＆ SBおうちスマホ割
+  const [upgradeFrom, setUpgradeFrom] = useState('none');
+  const [sbOuchiSumahoWari, setSbOuchiSumahoWari] = useState(false);
 
   const [sortBy, setSortBy] = useState('recommended');
   const [expandedPlanId, setExpandedPlanId] = useState(null);
@@ -3041,6 +3461,8 @@ export default function MobilePlanSimulator() {
     setAllowAppCall(s.allowAppCall);
     setMonthlySpend(s.monthlySpend);
     setCurrentBill(s.currentBill);
+    setUpgradeFrom(s.upgradeFrom || 'none');
+    setSbOuchiSumahoWari(Boolean(s.sbOuchiSumahoWari));
     setNeeds(s.needs);
   };
 
@@ -3061,6 +3483,8 @@ export default function MobilePlanSimulator() {
     setExcludedCarriers([]);
     setIncludeLimitedDiscount(true);
     setZouryoMode('auto');
+    setUpgradeFrom('none');
+    setSbOuchiSumahoWari(false);
     setNeeds({
       storeSupport: false,
       lineFree: false,
@@ -3089,7 +3513,9 @@ export default function MobilePlanSimulator() {
       allowAppCall,
       monthlySpend,
       needs,
-      zouryoMode
+      zouryoMode,
+      upgradeFrom,
+      sbOuchiSumahoWari
     });
 
     let filtered = raw.filter((p) => !excludedCarriers.includes(p.carrierKey));
@@ -3147,7 +3573,9 @@ export default function MobilePlanSimulator() {
     filterStoreOnly,
     excludedCarriers,
     includeLimitedDiscount,
-    zouryoMode
+    zouryoMode,
+    upgradeFrom,
+    sbOuchiSumahoWari
   ]);
 
   const bestPlan = evaluatedPlans[0];
@@ -3656,10 +4084,69 @@ export default function MobilePlanSimulator() {
                       期間限定割引（1年間割引・増量OP 7カ月無料）を最安計算に含める
                     </div>
                     <div className="text-[11px] text-amber-800 mt-0.5">
-                      UQ「コミコミおトク割（-660円×13カ月）」やY!mobile「超！おトク割（-1,100円×12カ月）」、増量オプション7カ月無料を反映します（OFFにすると期間終了後の通常料金で比較）
+                      UQ「コミコミおトク割」やY!mobile「超！おトク割」、番号移行割、SB「おうちスマホ割（1年目-2,860円）」等を反映します（OFFにすると期間終了後の2年目以降料金で比較）
                     </div>
                   </div>
                 </label>
+
+                {/* ★ Sub-brand to Main Brand Upgrade Program Selector */}
+                <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-3">
+                  <div className="text-xs font-bold text-indigo-950 mb-1.5 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <ArrowUpRight className="w-4 h-4 text-indigo-600" />
+                      サブブランドからの番号移行（アップグレード割引）
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 font-extrabold">
+                      1年間割引
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {[
+                      {
+                        id: 'none',
+                        label: '利用しない（通常・他社MNP）',
+                        desc: '番号移行特典なし'
+                      },
+                      {
+                        id: 'uq_to_au',
+                        label: 'UQ mobile ➔ au 移行',
+                        desc: 'auバリューリンク 1年間 -2,640円/月'
+                      },
+                      {
+                        id: 'ym_to_sb',
+                        label: 'Y!mobile ➔ SoftBank 移行',
+                        desc: 'のりかえ特典＋ 1年間 -2,420円/月'
+                      },
+                      {
+                        id: 'linemo_to_sb',
+                        label: 'LINEMO ➔ SoftBank 移行',
+                        desc: 'のりかえ特典 1年間 -2,288円/月＋通話OP割'
+                      }
+                    ].map((up) => (
+                      <button
+                        key={up.id}
+                        onClick={() => {
+                          setActivePreset(null);
+                          setUpgradeFrom(up.id);
+                        }}
+                        className={`p-2 rounded-lg text-left border transition cursor-pointer ${
+                          upgradeFrom === up.id
+                            ? 'bg-indigo-600 border-indigo-600 text-white font-bold shadow-xs'
+                            : 'bg-white border-indigo-200/80 text-slate-700 hover:bg-indigo-100/50'
+                        }`}
+                      >
+                        <div className="text-[11px] font-bold">{up.label}</div>
+                        <div
+                          className={`text-[10px] mt-0.5 ${
+                            upgradeFrom === up.id ? 'text-indigo-100' : 'text-slate-500'
+                          }`}
+                        >
+                          {up.desc}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
                 {/* UQ / Y!mobile Data Augmentation Option Mode */}
                 <div className="bg-sky-50/70 border border-sky-200 rounded-xl p-3">
@@ -3848,7 +4335,7 @@ export default function MobilePlanSimulator() {
                     },
                     {
                       id: 'softbank',
-                      label: 'SoftBank 光 / Air/ NURO光',
+                      label: 'SoftBank 光 / Air / NURO光',
                       sub: 'SB -1,100円 / Y! -1,650円'
                     },
                     {
@@ -3874,6 +4361,40 @@ export default function MobilePlanSimulator() {
                     </button>
                   ))}
                 </div>
+
+                {/* ★ SoftBank Ouchi Sumaho Wari Option */}
+                <label
+                  className={`mt-2.5 flex items-start gap-2.5 text-xs rounded-xl p-3 border transition cursor-pointer ${
+                    sbOuchiSumahoWari
+                      ? 'bg-rose-50 border-rose-400 text-rose-950'
+                      : 'bg-slate-50 border-slate-200 text-slate-700'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={sbOuchiSumahoWari}
+                    onChange={(e) => {
+                      setActivePreset(null);
+                      const checked = e.target.checked;
+                      setSbOuchiSumahoWari(checked);
+                      if (checked && broadband !== 'softbank') {
+                        setBroadband('softbank');
+                      }
+                    }}
+                    className="mt-0.5 rounded text-rose-600 focus:ring-rose-500 cursor-pointer"
+                  />
+                  <div>
+                    <div className="font-bold flex items-center gap-1.5">
+                      <Home className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                      <span>
+                        SoftBank「おうちスマホ割」を適用（SoftBank 光 / Air 新規加入）
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-600 mt-0.5">
+                      テイガク無制限・ペイトク2が1年間 <b>-2,860円/月</b>（PayPayカードゴールドなら2年目以降も <b>-1,210円/月</b> 継続）！※新みんな家族割・のりかえ特典とは排他
+                    </div>
+                  </div>
+                </label>
               </div>
 
               {/* Electricity Set Discount */}
@@ -4503,11 +5024,14 @@ export default function MobilePlanSimulator() {
                                     Web専用
                                   </span>
                                 )}
-                                {plan.limitedDiscounts.length > 0 && (
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] bg-rose-50 text-rose-700 border border-rose-200 font-bold">
-                                    ★{plan.limitedDiscounts[0].name}
+                                {plan.limitedDiscounts.map((ld, i) => (
+                                  <span
+                                    key={i}
+                                    className="px-2 py-0.5 rounded-full text-[10px] bg-rose-50 text-rose-700 border border-rose-200 font-bold"
+                                  >
+                                    ★{ld.name}
                                   </span>
-                                )}
+                                ))}
                                 {plan.zouryoApplied && (
                                   <span className="px-2 py-0.5 rounded-full text-[10px] bg-sky-50 text-sky-700 border border-sky-200 font-bold">
                                     ＋増量OP({plan.zouryoFreeMonths}カ月0円)
