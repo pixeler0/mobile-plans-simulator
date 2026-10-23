@@ -142,6 +142,7 @@ const PRESETS = [
       upgradeFrom: 'none',
       sbOuchiSumahoWari: false,
       needs: {
+        singleFriendly: true,
         storeSupport: false,
         lineFree: false,
         overseas: false,
@@ -170,6 +171,7 @@ const PRESETS = [
       upgradeFrom: 'none',
       sbOuchiSumahoWari: false,
       needs: {
+        singleFriendly: false,
         storeSupport: true,
         lineFree: false,
         overseas: false,
@@ -198,6 +200,7 @@ const PRESETS = [
       upgradeFrom: 'none',
       sbOuchiSumahoWari: true,
       needs: {
+        singleFriendly: false,
         storeSupport: true,
         lineFree: false,
         overseas: false,
@@ -226,6 +229,7 @@ const PRESETS = [
       upgradeFrom: 'uq_to_au',
       sbOuchiSumahoWari: false,
       needs: {
+        singleFriendly: false,
         storeSupport: true,
         lineFree: false,
         overseas: false,
@@ -254,6 +258,7 @@ const PRESETS = [
       upgradeFrom: 'none',
       sbOuchiSumahoWari: false,
       needs: {
+        singleFriendly: false,
         storeSupport: false,
         lineFree: true,
         overseas: false,
@@ -264,8 +269,20 @@ const PRESETS = [
   }
 ];
 
+// 固定回線や家族割を必要としない「単身者向けプラン」かどうかの判定ヘルパー
+function checkIsSingleFriendly(row) {
+  if (typeof row.isSingleFriendly === 'boolean') return row.isSingleFriendly;
+  // 光セット割・でんきセット割がなく、家族割にも依存しない（最大110円以下）一般向けプランを単身向けと自動判定
+  // （ahamo, UQコミコミプランバリュー, povo2.0, LINEMO, 楽天モバイルが該当）
+  const noBB = !row.bbTarget || row.bbTarget === 'none' || Number(row.bbDiscount) === 0;
+  const noDenki = !row.denkiTarget || row.denkiTarget === 'none' || Number(row.denkiDiscount) === 0;
+  const lowFam = !row.famTarget || row.famTarget === 'none' || Number(row.famDiscount3) <= 110;
+  const isGeneralAge = !row.ageCondition || row.ageCondition === 'all';
+  return noBB && noDenki && lowFam && isGeneralAge;
+}
+
 // スプレッドシートの初期マスタデータ（1行＝1プランまたは1容量段階）
-const INITIAL_SPREADSHEET_ROWS = [
+const RAW_INITIAL_SPREADSHEET_ROWS = [
   {
     id: 'docomo_max_1gb',
     enabled: true,
@@ -2472,6 +2489,11 @@ const INITIAL_SPREADSHEET_ROWS = [
   }
 ];
 
+const INITIAL_SPREADSHEET_ROWS = RAW_INITIAL_SPREADSHEET_ROWS.map((row) => ({
+  ...row,
+  isSingleFriendly: checkIsSingleFriendly(row)
+}));
+
 // 年齢条件の判定ヘルパー
 function checkAgeCondition(cond, ageGroup) {
   if (!cond || cond === 'all') return true;
@@ -2489,6 +2511,248 @@ function checkAgeCondition(cond, ageGroup) {
   if (cond === 'senior60') return isSenior60;
   if (cond === 'senior65') return isSenior65;
   return true;
+}
+
+// データ容量・通話料・希望条件・環境適合度からマッチ度（100点満点）を算出する関数
+function calculatePlanMatch({
+  row,
+  entry,
+  inputs,
+  isSingleFriendly,
+  hasAnySetDiscount,
+  targetEffectivePrice
+}) {
+  const { dataGB, callType, allowAppCall, currentBill = 6500, needs = {} } = inputs;
+  const unmetNeeds = [];
+  const matchHighlights = [];
+
+  // ----------------------------------------------------
+  // 1. データ容量マッチ度 (最大 35点)
+  // ----------------------------------------------------
+  let dataFitScore = 35;
+  const rawMaxD = Number(row.maxData) || 0;
+  const effectiveMaxD = entry.maxData;
+
+  if (dataGB > 50) {
+    // 大容量・無制限を希望している場合
+    if (rawMaxD >= 999 || effectiveMaxD >= 100) {
+      dataFitScore = 35;
+      matchHighlights.push('大容量・無制限ニーズに合致');
+    } else {
+      dataFitScore = 25;
+    }
+  } else {
+    // 1〜50GBの特定容量を希望している場合
+    if (rawMaxD >= 999) {
+      // 無制限プランの場合：少容量ユーザーにはオーバースペック判定
+      if (row.carrierKey === 'rakuten' && dataGB >= 21) {
+        // 楽天モバイルは20GB超で自動無制限3,278円のため中容量帯でも適性が高い
+        dataFitScore = 34;
+        matchHighlights.push('20GB超〜無制限まで定額カバー');
+      } else if (dataGB >= 35) {
+        dataFitScore = 34;
+        matchHighlights.push('大容量でも速度制限なしで安心');
+      } else if (dataGB >= 20) {
+        dataFitScore = 24;
+      } else if (dataGB >= 10) {
+        dataFitScore = 16;
+      } else {
+        dataFitScore = 10;
+      }
+      // ただしDAZNやU-NEXT希望、番号移行割・おうちスマホ割活用時は無制限プランを選ぶ合理性があるため補正
+      if (
+        (needs.dazn && row.includesDazn) ||
+        (needs.unext && row.includesUnext) ||
+        entry.totalLimitedDiscount >= 2000
+      ) {
+        dataFitScore = Math.min(35, dataFitScore + 9);
+      }
+    } else {
+      // 上限ありプラン（段階制・定額制）の場合
+      const excessGB = effectiveMaxD - dataGB;
+      if (entry.zouryoApplied && dataGB > rawMaxD) {
+        // 増量オプションをつけないと希望容量に届かない場合
+        dataFitScore = 28;
+      } else if (excessGB <= 5) {
+        dataFitScore = 35;
+        matchHighlights.push(`月${dataGB}GBに対して無駄のないデータ容量`);
+      } else if (excessGB <= 15) {
+        dataFitScore = 33;
+        matchHighlights.push(`月${dataGB}GBを余裕をもってカバー`);
+      } else if (excessGB <= 25) {
+        dataFitScore = 26;
+      } else {
+        dataFitScore = 18;
+      }
+    }
+  }
+
+  // ----------------------------------------------------
+  // 2. 通話スタイルマッチ度 (最大 20点)
+  // ----------------------------------------------------
+  let callFitScore = 20;
+  if (callType === 'none') {
+    // 通話ほぼなし希望
+    if (entry.callFee === 0) {
+      callFitScore = 20;
+      if (Number(row.callShortFee) === 0 && entry.basePrice >= 4500) {
+        callFitScore = 17;
+      }
+    } else {
+      callFitScore = 15;
+    }
+  } else if (callType === 'short') {
+    // 5分 / 10分かけ放題希望
+    if (Number(row.callShortFee) === 0) {
+      callFitScore = 20;
+      matchHighlights.push('短時間かけ放題が追加料金0円で標準付帯');
+    } else if (row.useRakutenLink && allowAppCall) {
+      callFitScore = 19;
+      matchHighlights.push('Rakuten Linkアプリで国内通話無料');
+    } else if (entry.callFee <= 550) {
+      callFitScore = 18;
+      matchHighlights.push('短時間かけ放題オプションが割安');
+    } else if (entry.callFee <= 880) {
+      callFitScore = 15;
+    } else {
+      callFitScore = 12;
+    }
+  } else if (callType === 'unlimited') {
+    // 24時間かけ放題希望
+    if (entry.callFee === 0) {
+      callFitScore = 20;
+      matchHighlights.push('24時間国内通話が追加料金0円');
+    } else if (entry.callFee <= 1100) {
+      callFitScore = 19;
+      matchHighlights.push('24時間かけ放題が割安（+1,100円以下）');
+    } else if (entry.callFee <= 1650) {
+      callFitScore = 16;
+    } else {
+      callFitScore = 14;
+    }
+  }
+
+  // ----------------------------------------------------
+  // 3. 希望条件・割引環境マッチ度 (最大 30点)
+  // ----------------------------------------------------
+  let conditionFitScore = 30;
+
+  // ① 単身者向け（固定回線・家族割不要）の希望判定
+  if (needs.singleFriendly) {
+    if (isSingleFriendly) {
+      matchHighlights.push('固定回線・家族割不要の単身向けプラン');
+    } else {
+      conditionFitScore -= 22;
+      unmetNeeds.push('固定回線や家族割のセット割が前提の料金体系（単身向け対象外）');
+    }
+  }
+
+  // ② 店舗対面サポートの希望判定
+  if (needs.storeSupport) {
+    if (entry.hasStoreSupport) {
+      matchHighlights.push('全国のキャリアショップで対面サポート対応');
+    } else {
+      conditionFitScore -= 24;
+      unmetNeeds.push('対面ショップサポート非対応（オンライン専用）');
+    }
+  }
+
+  // ③ LINEギガ消費ゼロの希望判定
+  if (needs.lineFree) {
+    if (entry.hasLineFree) {
+      matchHighlights.push('LINEギガフリーでトーク・通話のギガ消費ゼロ');
+    } else {
+      conditionFitScore -= 14;
+      unmetNeeds.push('LINEギガフリー（ギガ消費ゼロ）非対応');
+    }
+  }
+
+  // ④ 海外ローミング無料の希望判定
+  if (needs.overseas) {
+    if (entry.hasOverseasFree) {
+      matchHighlights.push('追加料金なしで海外データローミング対応');
+    } else {
+      conditionFitScore -= 18;
+      unmetNeeds.push('海外ローミング無料特典なし（別料金）');
+    }
+  }
+
+  // ⑤ DAZNの希望判定
+  if (needs.dazn) {
+    if (row.includesDazn) {
+      matchHighlights.push('DAZN見放題がプランに標準付帯');
+    } else {
+      conditionFitScore -= 18;
+      unmetNeeds.push('DAZN見放題がセットに含まれない');
+    }
+  }
+
+  // ⑥ U-NEXTの希望判定
+  if (needs.unext) {
+    if (row.includesUnext) {
+      matchHighlights.push('U-NEXT見放題がプランに標準付帯');
+    } else {
+      conditionFitScore -= 18;
+      unmetNeeds.push('U-NEXT見放題がセットに含まれない');
+    }
+  } else if (row.includesUnext) {
+    conditionFitScore -= 8;
+  }
+
+  // ⑦ 現在の契約環境（光回線・家族・でんき）との噛み合わせ判定
+  if (!isSingleFriendly && !hasAnySetDiscount) {
+    conditionFitScore -= 15;
+    if (!needs.singleFriendly) {
+      unmetNeeds.push('対象の固定回線・でんき・家族割が未適用のため割高');
+    }
+  } else if (!isSingleFriendly && hasAnySetDiscount) {
+    matchHighlights.push('選択中の自宅ネット/家族/でんきセット割をフル活用');
+  }
+
+  conditionFitScore = Math.max(0, Math.min(30, conditionFitScore));
+
+  // ----------------------------------------------------
+  // 4. 料金・コスパ適合度 (最大 15点)
+  // ※単純な安さ順ではなく、希望データ容量・通話・条件に対する相場や現在料金との比較
+  // ----------------------------------------------------
+  let expectedBenchmark = 3200;
+  if (dataGB <= 3) expectedBenchmark = 1300;
+  else if (dataGB <= 5) expectedBenchmark = 1800;
+  else if (dataGB <= 10) expectedBenchmark = 2300;
+  else if (dataGB <= 20) expectedBenchmark = 2700;
+  else if (dataGB <= 35) expectedBenchmark = 3300;
+  else expectedBenchmark = 5000;
+
+  if (callType === 'short') expectedBenchmark += 550;
+  if (callType === 'unlimited') expectedBenchmark += 1200;
+  if (needs.storeSupport) expectedBenchmark += 600;
+
+  let priceFitScore = 15;
+  if (targetEffectivePrice > expectedBenchmark) {
+    const overAmount = targetEffectivePrice - expectedBenchmark;
+    priceFitScore -= Math.min(12, Math.round(overAmount / 350));
+  }
+  if (currentBill > 0 && targetEffectivePrice > currentBill) {
+    priceFitScore -= 3;
+  }
+  priceFitScore = Math.max(0, Math.min(15, priceFitScore));
+
+  const totalScore = Math.max(
+    35,
+    Math.min(99, Math.round(dataFitScore + callFitScore + conditionFitScore + priceFitScore))
+  );
+
+  return {
+    matchScore: totalScore,
+    matchBreakdown: {
+      dataFitScore,
+      callFitScore,
+      conditionFitScore,
+      priceFitScore
+    },
+    unmetNeeds,
+    matchHighlights
+  };
 }
 
 // スプレッドシートの行データからプラン評価を算出する汎用エンジン
@@ -2875,6 +3139,19 @@ function evaluatePlansFromSpreadsheet(rows, inputs) {
       warnings.push('オンライン専用プランのため店舗での対面サポートは非対応（または有償）です');
     }
 
+    const isSingleFriendly = checkIsSingleFriendly(row);
+    const hasAnySetDiscount =
+      bbDiscAmount > 0 ||
+      famDiscAmount > 0 ||
+      denkiDiscAmount > 0 ||
+      isOuchiSumahoActive ||
+      candidateUpgradeLimited > 0 ||
+      limitedDiscounts.length > 0;
+
+    if (needs.singleFriendly && !isSingleFriendly) {
+      warnings.push('光回線や家族割などのセット割を前提とした料金プランです（単身・セット割なしでは割高になります）');
+    }
+
     if (isZouryoApplied) {
       reasons.unshift(
         `増量オプション（+${addGB}GB・月額${zouryoFeeVal}円）適用で最大${maxD + addGB}GBまで対応（初月〜${zouryoFreeMonthsVal}カ月間は無料！）`
@@ -2935,37 +3212,48 @@ function evaluatePlansFromSpreadsheet(rows, inputs) {
       hasStoreSupport: Boolean(row.hasStoreSupport),
       hasOverseasFree: Boolean(row.hasOverseasFree),
       hasLineFree: Boolean(row.hasLineFree),
+      isSingleFriendly,
       reasons,
       warnings
     });
 
-    let penalty = 0;
-    const unmetNeeds = [];
-    if (needs.storeSupport && !entry.hasStoreSupport) {
-      penalty += 2500;
-      unmetNeeds.push('対面ショップサポート非対応（オンライン専用）');
-    }
-    if (needs.lineFree && !entry.hasLineFree) penalty += 400;
-    if (needs.overseas && !entry.hasOverseasFree) {
-      penalty += 800;
-      unmetNeeds.push('海外ローミング無料特典なし（別料金）');
-    }
+    // 通常時（2年目以降）のマッチ度算出
+    const normalMatch = calculatePlanMatch({
+      row,
+      entry,
+      inputs,
+      isSingleFriendly,
+      hasAnySetDiscount,
+      targetEffectivePrice: entry.effectivePrice
+    });
 
-    const rankingCost = entry.effectivePrice + penalty;
-    const matchScore = Math.max(
-      45,
-      Math.min(99, Math.round(100 - rankingCost / 110))
-    );
+    // 期間限定割適用時（1年目）のマッチ度算出
+    const firstYearMatch = calculatePlanMatch({
+      row,
+      entry,
+      inputs,
+      isSingleFriendly,
+      hasAnySetDiscount,
+      targetEffectivePrice: entry.firstYearEffectivePrice
+    });
 
     return {
       ...entry,
-      unmetNeeds,
-      rankingCost,
-      matchScore
+      isSingleFriendly,
+      unmetNeeds: normalMatch.unmetNeeds,
+      matchScore: normalMatch.matchScore,
+      matchBreakdown: normalMatch.matchBreakdown,
+      matchHighlights: normalMatch.matchHighlights,
+      firstYearMatchScore: firstYearMatch.matchScore,
+      firstYearMatchBreakdown: firstYearMatch.matchBreakdown
     };
   });
 
-  return evaluated.sort((a, b) => a.rankingCost - b.rankingCost);
+  // マッチ度が高い順（同点なら実質月額が安い順）にソート
+  return evaluated.sort((a, b) => {
+    if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
+    return a.effectivePrice - b.effectivePrice;
+  });
 }
 
 // スプレッドシートのカラム定義
@@ -3051,6 +3339,7 @@ const SPREADSHEET_COLUMNS = [
   { key: 'callShortFee', label: '短時間通話OP', type: 'number', width: 'w-28' },
   { key: 'callUnlimitedFee', label: '24hかけ放題OP', type: 'number', width: 'w-28' },
   { key: 'callSeniorUnlimitedFee', label: 'シニア24hOP', type: 'number', width: 'w-28' },
+  { key: 'isSingleFriendly', label: '単身向け(割不要)', type: 'boolean', width: 'w-28' },
   { key: 'hasStoreSupport', label: '店舗対応', type: 'boolean', width: 'w-20' },
   { key: 'hasOverseasFree', label: '海外無料', type: 'boolean', width: 'w-20' },
   { key: 'hasLineFree', label: 'LINE無料', type: 'boolean', width: 'w-20' },
@@ -3155,6 +3444,10 @@ function parseCSVOrTSV(text, fallbackRows) {
     if (obj.carrierKey === 'rakuten') {
       obj.useRakutenLink = true;
     }
+    if (!headers.includes('isSingleFriendly')) {
+      delete obj.isSingleFriendly;
+      obj.isSingleFriendly = checkIsSingleFriendly(obj);
+    }
     return obj;
   });
 }
@@ -3196,6 +3489,7 @@ function createPlanEntry({
   hasStoreSupport,
   hasOverseasFree,
   hasLineFree,
+  isSingleFriendly = false,
   reasons,
   warnings
 }) {
@@ -3259,6 +3553,7 @@ function createPlanEntry({
     hasStoreSupport,
     hasOverseasFree,
     hasLineFree,
+    isSingleFriendly,
     reasons,
     warnings
   };
@@ -3290,6 +3585,7 @@ export default function MobilePlanSimulator() {
   const [monthlySpend, setMonthlySpend] = useState(50000);
   const [currentBill, setCurrentBill] = useState(6500);
   const [needs, setNeeds] = useState({
+    singleFriendly: false,
     storeSupport: false,
     lineFree: false,
     overseas: false,
@@ -3297,7 +3593,7 @@ export default function MobilePlanSimulator() {
     unext: false
   });
 
-  // ★ 新規追加状態：サブブランドからの番号移行（アップグレード）＆ SBおうちスマホ割
+  // サブブランドからの番号移行（アップグレード）＆ SBおうちスマホ割
   const [upgradeFrom, setUpgradeFrom] = useState('none');
   const [sbOuchiSumahoWari, setSbOuchiSumahoWari] = useState(false);
 
@@ -3305,6 +3601,7 @@ export default function MobilePlanSimulator() {
   const [expandedPlanId, setExpandedPlanId] = useState(null);
   const [activePreset, setActivePreset] = useState(null);
   const [filterStoreOnly, setFilterStoreOnly] = useState(false);
+  const [filterSingleOnly, setFilterSingleOnly] = useState(false);
 
   const [excludedCarriers, setExcludedCarriers] = useState([]);
   const [includeLimitedDiscount, setIncludeLimitedDiscount] = useState(true);
@@ -3320,7 +3617,7 @@ export default function MobilePlanSimulator() {
   // 行の追加
   const addNewSheetRow = () => {
     const newRow = {
-      ...INITIAL_SPREADSHEET_ROWS[6],
+      ...INITIAL_SPREADSHEET_ROWS[8],
       id: `custom_${Date.now()}`,
       enabled: true,
       planGroup: `custom_group_${Date.now()}`,
@@ -3331,6 +3628,7 @@ export default function MobilePlanSimulator() {
       minData: 0,
       maxData: 30,
       basePrice: 2970,
+      isSingleFriendly: true,
       limitedName: '新規キャンペーン割',
       limitedAmount: 550,
       limitedPeriod: '1年間',
@@ -3463,7 +3761,10 @@ export default function MobilePlanSimulator() {
     setCurrentBill(s.currentBill);
     setUpgradeFrom(s.upgradeFrom || 'none');
     setSbOuchiSumahoWari(Boolean(s.sbOuchiSumahoWari));
-    setNeeds(s.needs);
+    setNeeds({
+      singleFriendly: false,
+      ...s.needs
+    });
   };
 
   const resetConditions = () => {
@@ -3485,7 +3786,10 @@ export default function MobilePlanSimulator() {
     setZouryoMode('auto');
     setUpgradeFrom('none');
     setSbOuchiSumahoWari(false);
+    setFilterStoreOnly(false);
+    setFilterSingleOnly(false);
     setNeeds({
+      singleFriendly: false,
       storeSupport: false,
       lineFree: false,
       overseas: false,
@@ -3512,6 +3816,7 @@ export default function MobilePlanSimulator() {
       callType,
       allowAppCall,
       monthlySpend,
+      currentBill,
       needs,
       zouryoMode,
       upgradeFrom,
@@ -3523,6 +3828,9 @@ export default function MobilePlanSimulator() {
     if (filterStoreOnly) {
       filtered = filtered.filter((p) => p.hasStoreSupport);
     }
+    if (filterSingleOnly) {
+      filtered = filtered.filter((p) => p.isSingleFriendly);
+    }
 
     const mapped = filtered.map((p) => {
       const activePayment = includeLimitedDiscount
@@ -3531,29 +3839,30 @@ export default function MobilePlanSimulator() {
       const activeEffective = includeLimitedDiscount
         ? p.firstYearEffectivePrice
         : p.effectivePrice;
-      const zouryoSaving =
-        includeLimitedDiscount && p.zouryoApplied ? p.zouryoFee : 0;
-      const activeRankingCost =
-        p.rankingCost -
-        (includeLimitedDiscount ? p.totalLimitedDiscount + zouryoSaving : 0);
-      const activeMatchScore = Math.max(
-        45,
-        Math.min(99, Math.round(100 - activeRankingCost / 110))
-      );
+      const activeMatchScore = includeLimitedDiscount
+        ? p.firstYearMatchScore
+        : p.matchScore;
+      const activeMatchBreakdown = includeLimitedDiscount
+        ? p.firstYearMatchBreakdown
+        : p.matchBreakdown;
 
       return {
         ...p,
         activePayment,
         activeEffective,
-        activeRankingCost,
-        activeMatchScore
+        activeMatchScore,
+        activeMatchBreakdown
       };
     });
 
     return mapped.sort((a, b) => {
       if (sortBy === 'payment') return a.activePayment - b.activePayment;
       if (sortBy === 'effective') return a.activeEffective - b.activeEffective;
-      return a.activeRankingCost - b.activeRankingCost;
+      // おすすめ順：マッチ度が高い順 ➔ 同点なら実質月額が安い順
+      if (b.activeMatchScore !== a.activeMatchScore) {
+        return b.activeMatchScore - a.activeMatchScore;
+      }
+      return a.activeEffective - b.activeEffective;
     });
   }, [
     sheetRows,
@@ -3568,9 +3877,11 @@ export default function MobilePlanSimulator() {
     callType,
     allowAppCall,
     monthlySpend,
+    currentBill,
     needs,
     sortBy,
     filterStoreOnly,
+    filterSingleOnly,
     excludedCarriers,
     includeLimitedDiscount,
     zouryoMode,
@@ -3610,7 +3921,7 @@ export default function MobilePlanSimulator() {
                 携帯プラン最適診断シミュレーター
               </h1>
               <p className="text-slate-300 text-sm mt-1">
-                プラン料金や割引額・期間限定キャンペーンをスプレッドシート形式でいつでも自在に編集＆即時反映できます
+                データ容量・通話スタイル・単身向けなどの希望条件への合致度（マッチ度）と実質料金から最適プランを診断します
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2.5 self-start md:self-center">
@@ -4081,7 +4392,7 @@ export default function MobilePlanSimulator() {
                   />
                   <div>
                     <div className="font-bold text-amber-950">
-                      期間限定割引（1年間割引・増量OP 7カ月無料）を最安計算に含める
+                      期間限定割引（1年間割引・増量OP 7カ月無料）を診断・料金計算に含める
                     </div>
                     <div className="text-[11px] text-amber-800 mt-0.5">
                       UQ「コミコミおトク割」やY!mobile「超！おトク割」、番号移行割、SB「おうちスマホ割（1年目-2,860円）」等を反映します（OFFにすると期間終了後の2年目以降料金で比較）
@@ -4089,7 +4400,7 @@ export default function MobilePlanSimulator() {
                   </div>
                 </label>
 
-                {/* ★ Sub-brand to Main Brand Upgrade Program Selector */}
+                {/* Sub-brand to Main Brand Upgrade Program Selector */}
                 <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-3">
                   <div className="text-xs font-bold text-indigo-950 mb-1.5 flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
@@ -4362,7 +4673,7 @@ export default function MobilePlanSimulator() {
                   ))}
                 </div>
 
-                {/* ★ SoftBank Ouchi Sumaho Wari Option */}
+                {/* SoftBank Ouchi Sumaho Wari Option */}
                 <label
                   className={`mt-2.5 flex items-start gap-2.5 text-xs rounded-xl p-3 border transition cursor-pointer ${
                     sbOuchiSumahoWari
@@ -4551,7 +4862,7 @@ export default function MobilePlanSimulator() {
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-5">
               <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
                 <PhoneCall className="w-5 h-5 text-indigo-600" />
-                3. 通話スタイル・重視する特典・現在の料金
+                3. 通話スタイル・重視する希望条件・現在の料金
               </h2>
 
               {/* Call Style */}
@@ -4599,10 +4910,17 @@ export default function MobilePlanSimulator() {
               {/* Needs Checkboxes */}
               <div className="pt-4 border-t border-slate-100">
                 <label className="block text-xs font-bold text-slate-700 mb-2">
-                  欲しいサービス・こだわり条件（複数選択可）
+                  欲しいサービス・こだわり条件（複数選択可・マッチ度判定に反映）
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {[
+                    {
+                      key: 'singleFriendly',
+                      label: '固定回線・家族割不要（単身向けプラン）',
+                      sub: '光回線や家族割のセット割なしで安いシンプル料金プランを希望',
+                      icon: UserCheck,
+                      spanFull: true
+                    },
                     {
                       key: 'storeSupport',
                       label: '全国の店舗で対面サポート',
@@ -4630,19 +4948,32 @@ export default function MobilePlanSimulator() {
                     }
                   ].map((item) => {
                     const Icon = item.icon;
-                    const active = needs[item.key];
+                    const active = Boolean(needs[item.key]);
                     return (
                       <button
                         key={item.key}
                         onClick={() => toggleNeed(item.key)}
-                        className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium border text-left transition cursor-pointer ${
+                        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-medium border text-left transition cursor-pointer ${
+                          item.spanFull ? 'sm:col-span-2' : ''
+                        } ${
                           active
                             ? 'bg-indigo-600 border-indigo-600 text-white font-bold shadow-xs'
                             : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                         }`}
                       >
                         <Icon className="w-4 h-4 shrink-0" />
-                        <span>{item.label}</span>
+                        <div>
+                          <div>{item.label}</div>
+                          {item.sub && (
+                            <div
+                              className={`text-[10px] mt-0.5 font-normal ${
+                                active ? 'text-indigo-100' : 'text-slate-500'
+                              }`}
+                            >
+                              {item.sub}
+                            </div>
+                          )}
+                        </div>
                       </button>
                     );
                   })}
@@ -4676,7 +5007,7 @@ export default function MobilePlanSimulator() {
                     現在の毎月スマホ料金（目安）
                   </label>
                   <div className="text-[11px] text-slate-500 mb-2">
-                    乗り換え後の年間節約額を算出
+                    乗り換え後の年間節約額・コスパ判定を算出
                   </div>
                   <div className="flex items-center gap-1.5">
                     <input
@@ -4707,14 +5038,14 @@ export default function MobilePlanSimulator() {
                       <Award className="w-6 h-6 text-amber-300 shrink-0" />
                       <div>
                         <div className="text-[11px] font-semibold text-indigo-100">
-                          あなたの条件に最もおすすめの最適プラン
+                          データ容量・通話・希望条件に最も合致する最適プラン
                         </div>
                         <div className="text-lg font-extrabold tracking-tight">
                           第1位：{bestPlan.name}
                         </div>
                       </div>
                     </div>
-                    <span className="px-3 py-1 rounded-full bg-white/20 text-white text-xs font-extrabold backdrop-blur-xs">
+                    <span className="px-3.5 py-1 rounded-full bg-white/20 text-white text-xs font-extrabold backdrop-blur-xs border border-white/25">
                       マッチ度 {bestPlan.activeMatchScore}%
                     </span>
                   </div>
@@ -4734,6 +5065,11 @@ export default function MobilePlanSimulator() {
                           <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700">
                             容量：{bestPlan.dataLabel}
                           </span>
+                          {bestPlan.isSingleFriendly && (
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-teal-50 text-teal-800 border border-teal-200">
+                              単身向け・セット割不要
+                            </span>
+                          )}
                         </div>
                         <div className="text-xs text-slate-500 mt-1">
                           通話：{bestPlan.callNote}
@@ -4762,6 +5098,72 @@ export default function MobilePlanSimulator() {
                         </div>
                       </div>
                     </div>
+
+                    {/* 4-Axis Match Score Breakdown */}
+                    {bestPlan.activeMatchBreakdown && (
+                      <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-3.5 space-y-2.5">
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-indigo-950">
+                          <span>
+                            マッチ度判定の内訳（総合 {bestPlan.activeMatchScore}%）
+                          </span>
+                          {bestPlan.matchHighlights?.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {bestPlan.matchHighlights.slice(0, 2).map((hl, i) => (
+                                <span
+                                  key={i}
+                                  className="px-2 py-0.5 rounded-full text-[10px] bg-indigo-100 text-indigo-800 font-bold"
+                                >
+                                  ✓ {hl}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                          <div className="bg-white rounded-xl p-2.5 border border-indigo-100">
+                            <div className="text-slate-500">① データ容量適合</div>
+                            <div className="font-extrabold text-indigo-900 text-sm mt-0.5">
+                              {bestPlan.activeMatchBreakdown.dataFitScore}
+                              <span className="text-[10px] font-normal text-slate-500 ml-0.5">
+                                / 35点
+                              </span>
+                            </div>
+                          </div>
+                          <div className="bg-white rounded-xl p-2.5 border border-indigo-100">
+                            <div className="text-slate-500">② 通話スタイル適合</div>
+                            <div className="font-extrabold text-indigo-900 text-sm mt-0.5">
+                              {bestPlan.activeMatchBreakdown.callFitScore}
+                              <span className="text-[10px] font-normal text-slate-500 ml-0.5">
+                                / 20点
+                              </span>
+                            </div>
+                          </div>
+                          <div className="bg-white rounded-xl p-2.5 border border-indigo-100">
+                            <div className="text-slate-500">③ 希望条件・環境</div>
+                            <div className="font-extrabold text-indigo-900 text-sm mt-0.5">
+                              {bestPlan.activeMatchBreakdown.conditionFitScore}
+                              <span className="text-[10px] font-normal text-slate-500 ml-0.5">
+                                / 30点
+                              </span>
+                            </div>
+                          </div>
+                          <div className="bg-white rounded-xl p-2.5 border border-indigo-100">
+                            <div className="text-slate-500">④ 料金・コスパ</div>
+                            <div className="font-extrabold text-indigo-900 text-sm mt-0.5">
+                              {bestPlan.activeMatchBreakdown.priceFitScore}
+                              <span className="text-[10px] font-normal text-slate-500 ml-0.5">
+                                / 15点
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        {bestPlan.unmetNeeds?.length > 0 && (
+                          <div className="text-[11px] text-rose-600 font-semibold pt-0.5">
+                            ※未充足の条件：{bestPlan.unmetNeeds.join(' ／ ')}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* 3-Stage Payment Timeline when Limited Discount or Zouryo Option applies */}
                     {(bestPlan.totalLimitedDiscount > 0 || bestPlan.zouryoApplied) && (
@@ -4916,7 +5318,7 @@ export default function MobilePlanSimulator() {
                         <div>
                           <div className="flex items-center justify-between gap-1 mb-2">
                             <span className="text-xs font-extrabold text-indigo-600">
-                              #{idx + 1} おすすめ
+                              #{idx + 1} マッチ度 {plan.activeMatchScore}%
                             </span>
                             <span
                               className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${plan.carrierStyle.badgeBg}`}
@@ -4931,12 +5333,19 @@ export default function MobilePlanSimulator() {
                             {plan.dataLabel}
                           </div>
 
-                          {plan.limitedDiscounts.length > 0 && (
-                            <div className="mt-2 inline-block px-2 py-0.5 rounded bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-bold">
-                              ★{plan.limitedDiscounts[0].name} (-
-                              {plan.limitedDiscounts[0].amount}円)
-                            </div>
-                          )}
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {plan.isSingleFriendly && (
+                              <span className="px-2 py-0.5 rounded bg-teal-50 border border-teal-200 text-teal-800 text-[10px] font-bold">
+                                単身・セット割不要
+                              </span>
+                            )}
+                            {plan.limitedDiscounts.length > 0 && (
+                              <span className="px-2 py-0.5 rounded bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-bold">
+                                ★{plan.limitedDiscounts[0].name} (-
+                                {plan.limitedDiscounts[0].amount}円)
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         <div className="mt-4 pt-3 border-t border-slate-100">
@@ -4961,12 +5370,22 @@ export default function MobilePlanSimulator() {
                         条件を満たす全プラン一覧（{evaluatedPlans.length}件）
                       </h3>
                       <p className="text-xs text-slate-500">
-                        各プランをクリックすると割引内訳の確認やスプレッドシートでの編集が行えます
+                        各プランをクリックするとマッチ度内訳や割引明細の確認・スプレッドシート編集が行えます
                       </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
-                      <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer mr-2">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={filterSingleOnly}
+                          onChange={(e) => setFilterSingleOnly(e.target.checked)}
+                          className="rounded text-indigo-600 cursor-pointer"
+                        />
+                        <span>単身向け(割不要)のみ</span>
+                      </label>
+
+                      <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={filterStoreOnly}
@@ -4981,7 +5400,7 @@ export default function MobilePlanSimulator() {
                         onChange={(e) => setSortBy(e.target.value)}
                         className="px-2.5 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-700"
                       >
-                        <option value="recommended">おすすめ順（総合スコア）</option>
+                        <option value="recommended">おすすめ順（マッチ度順）</option>
                         <option value="effective">実質月額が安い順</option>
                         <option value="payment">毎月支払額が安い順</option>
                       </select>
@@ -5012,9 +5431,17 @@ export default function MobilePlanSimulator() {
                                 >
                                   {plan.carrierStyle.name}
                                 </span>
+                                <span className="px-2 py-0.5 rounded-full text-[11px] bg-indigo-50 text-indigo-700 border border-indigo-200 font-extrabold">
+                                  マッチ度 {plan.activeMatchScore}%
+                                </span>
                                 <span className="px-2 py-0.5 rounded-full text-[11px] bg-slate-100 text-slate-700 font-medium">
                                   {plan.category}
                                 </span>
+                                {plan.isSingleFriendly && (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] bg-teal-50 text-teal-800 border border-teal-200 font-bold">
+                                    単身・セット割不要
+                                  </span>
+                                )}
                                 {plan.hasStoreSupport ? (
                                   <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">
                                     店舗対応
@@ -5068,6 +5495,28 @@ export default function MobilePlanSimulator() {
 
                           {isExpanded && (
                             <div className="px-4 pb-4 pt-2 bg-slate-50 border-t border-slate-100 text-xs space-y-3">
+                              {plan.activeMatchBreakdown && (
+                                <div className="bg-white p-3 rounded-xl border border-indigo-100 flex flex-wrap items-center justify-between gap-2">
+                                  <span className="font-bold text-indigo-950">
+                                    マッチ度内訳（計 {plan.activeMatchScore}%）：
+                                  </span>
+                                  <div className="flex flex-wrap gap-3 text-[11px]">
+                                    <span>
+                                      ①容量適合：<b>{plan.activeMatchBreakdown.dataFitScore}/35</b>
+                                    </span>
+                                    <span>
+                                      ②通話適合：<b>{plan.activeMatchBreakdown.callFitScore}/20</b>
+                                    </span>
+                                    <span>
+                                      ③希望条件・環境：<b>{plan.activeMatchBreakdown.conditionFitScore}/30</b>
+                                    </span>
+                                    <span>
+                                      ④料金コスパ：<b>{plan.activeMatchBreakdown.priceFitScore}/15</b>
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1">
                                   <div className="font-bold text-slate-700 mb-1">
@@ -5177,7 +5626,7 @@ export default function MobilePlanSimulator() {
                   条件に合致するプランが見つかりませんでした
                 </div>
                 <p className="text-xs text-slate-500">
-                  除外しているキャリアを解除するか、「条件リセット」ボタンを押してください。
+                  除外しているキャリアや絞り込み条件を解除するか、「条件リセット」ボタンを押してください。
                 </p>
                 <button
                   onClick={resetConditions}
